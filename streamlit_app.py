@@ -133,3 +133,5 @@ for user_input, bot_response in history:
         st.text_area("Buster", value=bot_response, key=bot_response, height=100)
 
 
+if __name__ == "__main__":
+    main()
