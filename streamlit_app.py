@@ -1,7 +1,7 @@
 import logging
 
-import gradio as gr
 import pandas as pd
+import streamlit as st
 from buster.busterbot import Buster
 from gradio.utils import highlight_code
 from markdown_it import MarkdownIt
@@ -98,47 +98,38 @@ def chat(history):
         yield history, response
 
 
-block = gr.Blocks(
-    css="#chatbot .overflow-y-auto{height:500px}",
-    theme=gr.themes.Default(primary_hue="violet", secondary_hue="fuchsia"),
-)
+st.set_page_config(page_title="Buster 🤖: A Question-Answering Bot for your documentation")
 
-with block:
-    with gr.Row():
-        gr.Markdown("<h3><center>Buster 🤖: A Question-Answering Bot for your documentation</center></h3>")
+st.markdown("<h3><center>Buster 🤖: A Question-Answering Bot for your documentation</center></h3>", unsafe_allow_html=True)
 
-    chatbot = gr.Chatbot()
-    chatbot.md = get_markdown_parser()  # Workaround to disable latex rendering
+chatbot = st.empty()
 
-    with gr.Row():
-        question = gr.Textbox(
-            label="What's your question?",
-            placeholder="Ask a question to AI stackoverflow here...",
-            lines=1,
-        )
-        submit = gr.Button(value="Send", variant="secondary").style(full_width=False)
+st.markdown("This application uses GPT to search the docs for relevant info and answer questions.")
 
-    examples = gr.Examples(
-        examples=[
-            "How can I run a job with 2 GPUs?",
-            "What kind of GPUs are available on the cluster?",
-            "What is the $SCRATCH drive for?",
-        ],
-        inputs=question,
-    )
+question = st.text_input(label="What's your question?", help="Ask a question to AI stackoverflow here...")
+submit = st.button("Send")
 
-    gr.Markdown("This application uses GPT to search the docs for relevant info and answer questions.")
+examples = [
+    "How can I run a job with 2 GPUs?",
+    "What kind of GPUs are available on the cluster?",
+    "What is the $SCRATCH drive for?",
+]
 
-    gr.HTML("️<center> Created with ❤️ by @jerpint and @hadrienbertrand")
+if st.checkbox("Show examples"):
+    st.markdown("#### Examples")
+    st.code(examples)
 
-    response = gr.State()
+history = []
 
-    submit.click(user, [question, chatbot], [question, chatbot], queue=False).then(
-        chat, inputs=[chatbot], outputs=[chatbot, response]
-    ).then(add_sources, inputs=[chatbot, response], outputs=[chatbot])
-    question.submit(user, [question, chatbot], [question, chatbot], queue=False).then(
-        chat, inputs=[chatbot], outputs=[chatbot, response]
-    ).then(add_sources, inputs=[chatbot, response], outputs=[chatbot])
+if submit:
+    history = user(question, history)
+    history, response = next(chat(history))
+    history = add_sources(history, response)
 
-block.queue(concurrency_count=16)
-block.launch(debug=True, share=False, auth=check_auth, auth_message="Request access from an admin.")
+for user_input, bot_response in history:
+    if user_input:
+        st.text_area("User", value=user_input, key=user_input, height=100)
+    if bot_response:
+        st.text_area("Buster", value=bot_response, key=bot_response, height=100)
+
+
